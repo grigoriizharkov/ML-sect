@@ -1,3 +1,4 @@
-Linear Regression implementation for ITMO ML-sect
+Linear Regression (also l1, l2 regularization) implementation for ITMO ML-sect.
+
 
  
