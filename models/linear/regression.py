@@ -43,11 +43,27 @@ class LinearModel(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def calculate_gradient(self, x, y, w, batch):
+    def calculate_gradient(self, x, y, w, batch: np.ndarray):
+        """
+        Работает как для стохастического, так и для мини-батча и полного градиентоного спуска.
+        Параметр batch - список порядковых номеров объектов из матрицы объекты-признаки, по которым считается градиент.
+        Так, для стохастического градиентного спуска batch будет представлять из себя массив одного элемента - порядкового номера строки (объекта),
+        по которому следует считать градиент.
+        Для мини-батча - некоторую подвыборку порядковых номеров строк матрицы объекты-признаки, по которым будет рассчитываться градиент.
+        Для полного градиентного спуска - полный список (от 0 до количества строк матрицы - 1) порядковых номеров строк матрицы - градиент считается на всей выборке.
+        """
         pass
 
     @staticmethod
     def calculate_loss(x, y, w, batch):
+        """
+        Работает как для стохастического, так и для мини-батча и полного градиентоного спуска.
+        Параметр batch - список порядковых номеров объектов из матрицы объекты-признаки, по которым считается ошибка.
+        Так, для стохастического градиентного спуска batch будет представлять из себя массив одного элемента - порядкового номера строки (объекта),
+        по которому следует считать среднюю по данной подвыборке ошибку.
+        Для мини-батча - некоторую подвыборку порядковых номеров строк матрицы объекты-признаки, по которым будет рассчитываться ошибка.
+        Для полного градиентного спуска - полный список (от 0 до количества строк матрицы - 1) порядковых номеров строк матрицы - считается средняя ошибка на всей выборке.
+        """
         loss = 0
         for sample in batch:
             loss += (x[sample] @ w - y[sample]) ** 2
@@ -56,34 +72,26 @@ class LinearModel(metaclass=ABCMeta):
         return loss
 
     def gradient_descent(self, x, y):
+        """
+        Полынй градиентный спуск, сходимость которого задается в параметрах модели (рассчитывается через ошибку на текущем и предыдущем шаге).
+        В качестве коэффициента при антиградиенте используется простейший динамический шаг = 1 / номер итерации.
+        """
         w = np.ones(x.shape[1])  # инициализируем веса
         q = self.calculate_loss(x, y, w, np.arange(0, x.shape[0]))  # считаем потерю для первоначального приближения
-        # sample = np.random.randint(0, X.shape[0])  # случайно выбираем объект, на котором будем считать градиент
-        # batch = np.random.choice(X.shape[0], 50, replace=False)
 
-        # gradients = self.calculate_batch_gradient(X, y, w, batch)
         gradients = self.calculate_gradient(x, y, w, np.arange(0, x.shape[0]))  # вычисляем вектор градиентов
-        # gradients = self.calculate_stochastic_gradient(X, y, w, sample)  # считаем вектор градиентов только для одного объекта
         w = w - np.array(gradients)  # делаем шаг - обновляем веса
+
         q_new = self.calculate_loss(x, y, w, np.arange(0, x.shape[0]))  # считаем полную потерю для новых весов
 
         step = 2  # задаем переменную для величины шага
         while abs(q_new - q) > self._convergence_rate:
             q = q_new  # храним ошибки для текущих и предыдущих значений вектора весов - нужно для сходимости
-            # batch = np.random.choice(X.shape[0], 50, replace=False)
 
-            # gradients = self.calculate_batch_gradient(X, y, w, batch)
             gradients = self.calculate_gradient(x, y, w, np.arange(0, x.shape[0]))
-            # sample = np.random.randint(0, X.shape[0])
-            # epsilon = self.calculate_certain_loss(X, y, w, sample)  # считаем ошибку на конкретном выбранном объекте
-
-            # gradients = self.calculate_stochastic_gradient(X, y, w, sample)
             w = w - (1 / step) * np.array(gradients)
 
-            # q_new = epsilon * self._forgetting_rate + (
-            #         1 - self._forgetting_rate) * q  # считаем ошибку для новых весов (скользящее среднее)
             q_new = self.calculate_loss(x, y, w, np.arange(0, x.shape[0]))
-
             step += 1  # инкремент переменной градиентного шага
 
         return w
@@ -161,7 +169,8 @@ class Lasso(LinearModel):
                     gradients.append(certain_gradient * 2 / batch.size)
                 else:
                     for sample in batch:
-                        certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + self._alpha * np.sign(w[i]))
+                        certain_gradient += float(
+                            x[sample][i] * (x[sample] @ w - y[sample]) + self._alpha * np.sign(w[i]))
                     gradients.append(certain_gradient * 2 / batch.size)
             else:
                 for sample in batch:
