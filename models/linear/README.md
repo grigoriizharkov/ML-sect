@@ -1,3 +1,3 @@
-Linear Regression implementation
+Linear Regression implementation for ITMO ML-sect
 
  
