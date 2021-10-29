@@ -1,5 +1,7 @@
+from typing import Union
 import numpy as np
 from abc import ABCMeta, abstractmethod
+import pandas as pd
 
 
 class LinearModel(metaclass=ABCMeta):
@@ -12,7 +14,8 @@ class LinearModel(metaclass=ABCMeta):
         self._random_state = random_state
         self.coef_ = None
 
-    def fit(self, x, y):
+    def fit(self, x: Union[np.ndarray, pd.DataFrame, pd.Series],
+            y: Union[np.ndarray, pd.Series, pd.DataFrame]) -> np.ndarray:
         if self._random_state is not None:
             np.random.seed(self._random_state)
 
@@ -22,15 +25,15 @@ class LinearModel(metaclass=ABCMeta):
         y = np.array(y)
 
         if self._gradient:
-            w = self.gradient_descent(x, y)
+            w = self.__gradient_descent(x, y)
         else:
-            w = self.solve_accurate(x, y)
+            w = self._solve_accurate(x, y)
 
         self.coef_ = w
 
         return w
 
-    def predict(self, x):
+    def predict(self, x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
         x = np.array(x)
         if self._fit_intercept:
             x = np.append(x, [[1]] * x.shape[0], axis=1)
@@ -39,23 +42,11 @@ class LinearModel(metaclass=ABCMeta):
         return y
 
     @abstractmethod
-    def solve_accurate(self, x, y):
-        pass
-
-    @abstractmethod
-    def calculate_gradient(self, x, y, w, batch: np.ndarray):
-        """
-        Работает как для стохастического, так и для мини-батча и полного градиентоного спуска.
-        Параметр batch - список порядковых номеров объектов из матрицы объекты-признаки, по которым считается градиент.
-        Так, для стохастического градиентного спуска batch будет представлять из себя массив одного элемента - порядкового номера строки (объекта),
-        по которому следует считать градиент.
-        Для мини-батча - некоторую подвыборку порядковых номеров строк матрицы объекты-признаки, по которым будет рассчитываться градиент.
-        Для полного градиентного спуска - полный список (от 0 до количества строк матрицы - 1) порядковых номеров строк матрицы - градиент считается на всей выборке.
-        """
+    def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         pass
 
     @staticmethod
-    def calculate_loss(x, y, w, batch):
+    def __calculate_loss(x: np.ndarray, y: np.ndarray, w: np.ndarray, batch: np.ndarray) -> float:
         """
         Работает как для стохастического, так и для мини-батча и полного градиентоного спуска.
         Параметр batch - список порядковых номеров объектов из матрицы объекты-признаки, по которым считается ошибка.
@@ -71,94 +62,39 @@ class LinearModel(metaclass=ABCMeta):
 
         return loss
 
-    def gradient_descent(self, x, y):
+    def __calculate_gradient(self, x: np.ndarray, y: np.ndarray, w: np.ndarray, batch: np.ndarray) -> list:
         """
-        Полынй градиентный спуск, сходимость которого задается в параметрах модели (рассчитывается через ошибку на текущем и предыдущем шаге).
-        В качестве коэффициента при антиградиенте используется простейший динамический шаг = 1 / номер итерации.
+        Работает как для стохастического, так и для мини-батча и полного градиентоного спуска.
+        Параметр batch - список порядковых номеров объектов из матрицы объекты-признаки, по которым считается градиент.
+        Так, для стохастического градиентного спуска batch будет представлять из себя массив одного элемента - порядкового номера строки (объекта),
+        по которому следует считать градиент.
+        Для мини-батча - некоторую подвыборку порядковых номеров строк матрицы объекты-признаки, по которым будет рассчитываться градиент.
+        Для полного градиентного спуска - полный список (от 0 до количества строк матрицы - 1) порядковых номеров строк матрицы - градиент считается на всей выборке.
         """
-        w = np.ones(x.shape[1])  # инициализируем веса
-        q = self.calculate_loss(x, y, w, np.arange(0, x.shape[0]))  # считаем потерю для первоначального приближения
 
-        gradients = self.calculate_gradient(x, y, w, np.arange(0, x.shape[0]))  # вычисляем вектор градиентов
-        w = w - np.array(gradients)  # делаем шаг - обновляем веса
-
-        q_new = self.calculate_loss(x, y, w, np.arange(0, x.shape[0]))  # считаем полную потерю для новых весов
-
-        step = 2  # задаем переменную для величины шага
-        while abs(q_new - q) > self._convergence_rate:
-            q = q_new  # храним ошибки для текущих и предыдущих значений вектора весов - нужно для сходимости
-
-            gradients = self.calculate_gradient(x, y, w, np.arange(0, x.shape[0]))
-            w = w - (1 / step) * np.array(gradients)
-
-            q_new = self.calculate_loss(x, y, w, np.arange(0, x.shape[0]))
-            step += 1  # инкремент переменной градиентного шага
-
-        return w
-
-
-class LinearRegression(LinearModel):
-
-    def solve_accurate(self, x, y):
-        w = np.linalg.solve(x.T @ x, x.T @ y)
-        return w
-
-    def calculate_gradient(self, x, y, w, batch):
         gradients = list()
         m = x.shape[1]
-        for i in range(m):
-            certain_gradient = 0
-            for sample in batch:
-                certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]))
-            gradients.append(certain_gradient * 2 / batch.size)
 
-        return gradients
+        alpha = 0
 
+        if isinstance(self,
+                      LinearRegression):  # проверка класса - если это линейная регрессия без регуляризации, то и функция регуляризации будет возвращать 0
+            def regularization(parameter, weight):
+                return 0
 
-class Ridge(LinearModel):
+        if isinstance(self,
+                      Ridge):  # проверка класса - если это Ridge регрессия, то функция регуляризации своя - через L2-норму
+            alpha = self._alpha
 
-    def __init__(self, alpha, *args, **kwargs):
-        self._alpha = alpha
-        super().__init__(*args, **kwargs)
+            def regularization(parameter, weight):
+                return parameter * weight
 
-    def solve_accurate(self, x, y):
-        return np.linalg.solve((x.T @ x + self._alpha * np.eye(x.shape[1])), x.T @ y)
+        if isinstance(self, Lasso):  # проверка класса - если это Lasso, то функция регуляризации своя - через L1-норма
+            alpha = self._alpha
 
-    def calculate_gradient(self, x, y, w, batch):
-        gradients = list()
-        m = x.shape[1]
-        for i in range(m):
-            certain_gradient = 0
+            def regularization(parameter, weight):
+                return parameter * np.sign(weight)
 
-            if self._fit_intercept:
-                if i == m - 1:
-                    for sample in batch:
-                        certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]))
-                    gradients.append(certain_gradient * 2 / batch.size)
-                else:
-                    for sample in batch:
-                        certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + self._alpha * w[i])
-                    gradients.append(certain_gradient * 2 / batch.size)
-            else:
-                for sample in batch:
-                    certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + self._alpha * w[i])
-                gradients.append(certain_gradient * 2 / batch.size)
-
-        return gradients
-
-
-class Lasso(LinearModel):
-
-    def __init__(self, alpha, *args, **kwargs):
-        self._alpha = alpha
-        super().__init__(*args, **kwargs)
-
-    def solve_accurate(self, x, y):
-        raise Exception("Impossible to solve accurate for L1 regularization!")
-
-    def calculate_gradient(self, x, y, w, batch):
-        gradients = list()
-        m = x.shape[1]
         for i in range(m):
             certain_gradient = 0
 
@@ -170,11 +106,64 @@ class Lasso(LinearModel):
                 else:
                     for sample in batch:
                         certain_gradient += float(
-                            x[sample][i] * (x[sample] @ w - y[sample]) + self._alpha * np.sign(w[i]))
+                            x[sample][i] * (x[sample] @ w - y[sample]) + regularization(alpha, w[i]))
                     gradients.append(certain_gradient * 2 / batch.size)
             else:
                 for sample in batch:
-                    certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + self._alpha * np.sign(w[i]))
+                    certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + regularization(alpha, w[i]))
                 gradients.append(certain_gradient * 2 / batch.size)
 
         return gradients
+
+    def __gradient_descent(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        """
+        Полынй градиентный спуск, сходимость которого задается в параметрах модели (рассчитывается через ошибку на текущем и предыдущем шаге).
+        В качестве коэффициента при антиградиенте используется простейший динамический шаг = 1 / номер итерации.
+        """
+
+        w = np.ones(x.shape[1])  # инициализируем веса
+        q = self.__calculate_loss(x, y, w, np.arange(0, x.shape[0]))  # считаем потерю для первоначального приближения
+
+        gradients = self.__calculate_gradient(x, y, w, np.arange(0, x.shape[0]))  # вычисляем вектор градиентов
+        w = w - np.array(gradients)  # делаем шаг - обновляем веса
+
+        q_new = self.__calculate_loss(x, y, w, np.arange(0, x.shape[0]))  # считаем полную потерю для новых весов
+
+        step = 2  # задаем переменную для величины шага
+        while abs(q_new - q) > self._convergence_rate:
+            q = q_new  # храним ошибки для текущих и предыдущих значений вектора весов - нужно для сходимости
+
+            gradients = self.__calculate_gradient(x, y, w, np.arange(0, x.shape[0]))
+            w = w - (1 / step) * np.array(gradients)
+
+            q_new = self.__calculate_loss(x, y, w, np.arange(0, x.shape[0]))
+            step += 1  # инкремент переменной градиентного шага
+
+        return w
+
+
+class LinearRegression(LinearModel):
+
+    def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return np.linalg.solve(x.T @ x, x.T @ y)
+
+
+class Ridge(LinearModel):
+
+    def __init__(self, alpha, *args, **kwargs):
+        self._alpha = alpha
+        super().__init__(*args, **kwargs)
+
+    def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return np.linalg.solve((x.T @ x + self._alpha * np.eye(x.shape[1])), x.T @ y)
+
+
+class Lasso(LinearModel):
+
+    def __init__(self, alpha, *args, **kwargs):
+        self._alpha = alpha
+        super().__init__(*args, **kwargs)
+
+    def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        raise Exception("Impossible to solve accurate for L1 regularization!")
+
