@@ -155,7 +155,7 @@ class Lasso(LinearModel):
         super().__init__(*args, **kwargs)
 
     def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        raise NotImplemented
+        raise NotImplementedError
 
     def _regularization(self, weight: float) -> float:
         return self._alpha * np.sign(weight)
