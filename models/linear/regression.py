@@ -6,7 +6,7 @@ import pandas as pd
 
 class LinearModel(metaclass=ABCMeta):
 
-    def __init__(self, gradient, fit_intercept=True, convergence_rate=0.01, forgetting_rate=0.01, random_state=None):
+    def __init__(self, gradient: bool, fit_intercept=True, convergence_rate=0.01, forgetting_rate=0.01, random_state=None):
         self._gradient = gradient
         self._fit_intercept = fit_intercept
         self._convergence_rate = convergence_rate
@@ -45,6 +45,10 @@ class LinearModel(metaclass=ABCMeta):
     def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         pass
 
+    @abstractmethod
+    def _regularization(self, weight: float) -> float:
+        pass
+
     @staticmethod
     def __calculate_loss(x: np.ndarray, y: np.ndarray, w: np.ndarray, batch: np.ndarray) -> float:
         """
@@ -75,26 +79,6 @@ class LinearModel(metaclass=ABCMeta):
         gradients = list()
         m = x.shape[1]
 
-        alpha = 0
-
-        if isinstance(self,
-                      LinearRegression):  # проверка класса - если это линейная регрессия без регуляризации, то и функция регуляризации будет возвращать 0
-            def regularization(parameter, weight):
-                return 0
-
-        if isinstance(self,
-                      Ridge):  # проверка класса - если это Ridge регрессия, то функция регуляризации своя - через L2-норму
-            alpha = self._alpha
-
-            def regularization(parameter, weight):
-                return parameter * weight
-
-        if isinstance(self, Lasso):  # проверка класса - если это Lasso, то функция регуляризации своя - через L1-норма
-            alpha = self._alpha
-
-            def regularization(parameter, weight):
-                return parameter * np.sign(weight)
-
         for i in range(m):
             certain_gradient = 0
 
@@ -106,11 +90,11 @@ class LinearModel(metaclass=ABCMeta):
                 else:
                     for sample in batch:
                         certain_gradient += float(
-                            x[sample][i] * (x[sample] @ w - y[sample]) + regularization(alpha, w[i]))
+                            x[sample][i] * (x[sample] @ w - y[sample]) + self._regularization(w[i]))
                     gradients.append(certain_gradient * 2 / batch.size)
             else:
                 for sample in batch:
-                    certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + regularization(alpha, w[i]))
+                    certain_gradient += float(x[sample][i] * (x[sample] @ w - y[sample]) + self._regularization(w[i]))
                 gradients.append(certain_gradient * 2 / batch.size)
 
         return gradients
@@ -147,6 +131,9 @@ class LinearRegression(LinearModel):
     def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         return np.linalg.solve(x.T @ x, x.T @ y)
 
+    def _regularization(self, weight: float) -> float:
+        return 0
+
 
 class Ridge(LinearModel):
 
@@ -157,6 +144,9 @@ class Ridge(LinearModel):
     def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         return np.linalg.solve((x.T @ x + self._alpha * np.eye(x.shape[1])), x.T @ y)
 
+    def _regularization(self, weight: float) -> float:
+        return self._alpha * weight
+
 
 class Lasso(LinearModel):
 
@@ -165,5 +155,7 @@ class Lasso(LinearModel):
         super().__init__(*args, **kwargs)
 
     def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        raise Exception("Impossible to solve accurate for L1 regularization!")
+        raise NotImplemented
 
+    def _regularization(self, weight: float) -> float:
+        return self._alpha * np.sign(weight)
