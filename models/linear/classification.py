@@ -5,6 +5,36 @@ from scipy.special import expit
 
 
 class LogisticRegression:
+    """
+    Logistic regression for classification task. Implements full gradient descent.
+
+    Attributes:
+        penalty: 'none', 'l1' or 'l2', default='none'
+            Type of regularizazation
+
+        fit_intercept: bool, default=True
+            Either to add column of 1's to dataset
+
+        alpha: float > 0, default=1
+            Regularization coefficient
+
+        n_iterations: int > 0, default=1
+            Number of steps for gradient descent
+
+        random_state: int, default=None
+            Random seed
+
+    Methods:
+        fit(x: Union[np.ndarray, pd.DataFrame, pd.Series], y: Union[np.ndarray, pd.DataFrame, pd.Series])
+            Fitting model to the training data
+
+        predict(x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
+            Predict target variable based on test data
+
+        predict_proba(x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
+            Predict probabilitis for each class for test data
+
+    """
 
     def __init__(self, penalty='none', fit_intercept=True, alpha=1, n_iterations=1, random_state=None):
         self._penalty = penalty
@@ -16,6 +46,10 @@ class LogisticRegression:
 
     def fit(self, x: Union[np.ndarray, pd.DataFrame, pd.Series],
             y: Union[np.ndarray, pd.DataFrame, pd.Series]):
+        """
+        Fitting model to the training data
+
+        """
 
         if self._random_state is not None:
             np.random.seed(self._random_state)
@@ -28,6 +62,10 @@ class LogisticRegression:
         self.coef_ = self.__gradient_descent(x, y)
 
     def predict(self, x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
+        """
+        Predict target variable based on test data
+
+        """
         x = np.array(x)
         if self._fit_intercept:
             x = np.append(x, [[1]] * x.shape[0], axis=1)
@@ -37,6 +75,10 @@ class LogisticRegression:
         return y
 
     def predict_proba(self, x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
+        """
+        Predict probabilitis for each class for test data
+
+        """
         x = np.array(x)
         if self._fit_intercept:
             x = np.append(x, [[1]] * x.shape[0], axis=1)

@@ -5,6 +5,33 @@ import pandas as pd
 
 
 class LinearModel(metaclass=ABCMeta):
+    """
+    Linear regression for classification task. Implements gradient descent or matrix solution
+
+    Attributes:
+        gradient: bool
+            Either to use gradient descent or matrix solution
+
+        fit_intercept: bool, default=True
+            Either to add column of 1's to dataset
+
+        convergence_rate: float > 0, default=0.01
+            Rate for stopping criteria
+
+        forgetting_rate: float > 0, default=0.01
+            Rate for forgetting previous weight's vadlue in gradient descent
+
+        random_state: int, default=None
+            Random seed
+
+    Methods:
+        fit(x: Union[np.ndarray, pd.DataFrame, pd.Series], y: Union[np.ndarray, pd.DataFrame, pd.Series])
+            Fitting model to the training data
+
+        predict(x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
+            Predict target variable based on test data
+
+        """
 
     def __init__(self, gradient: bool, fit_intercept=True, convergence_rate=0.01, forgetting_rate=0.01, random_state=None):
         self._gradient = gradient
@@ -16,6 +43,10 @@ class LinearModel(metaclass=ABCMeta):
 
     def fit(self, x: Union[np.ndarray, pd.DataFrame, pd.Series],
             y: Union[np.ndarray, pd.Series, pd.DataFrame]) -> np.ndarray:
+        """
+        Fitting model to the training data
+
+        """
         if self._random_state is not None:
             np.random.seed(self._random_state)
 
@@ -34,6 +65,10 @@ class LinearModel(metaclass=ABCMeta):
         return w
 
     def predict(self, x: Union[np.ndarray, pd.DataFrame, pd.Series]) -> np.ndarray:
+        """
+        Predict target variable based on test data
+
+        """
         x = np.array(x)
         if self._fit_intercept:
             x = np.append(x, [[1]] * x.shape[0], axis=1)
@@ -127,6 +162,10 @@ class LinearModel(metaclass=ABCMeta):
 
 
 class LinearRegression(LinearModel):
+    """
+    Linear regression without regularization
+
+    """
 
     def _solve_accurate(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         return np.linalg.solve(x.T @ x, x.T @ y)
@@ -136,6 +175,10 @@ class LinearRegression(LinearModel):
 
 
 class Ridge(LinearModel):
+    """
+    Linear regression with L2-regularization
+
+    """
 
     def __init__(self, alpha, *args, **kwargs):
         self._alpha = alpha
@@ -149,6 +192,10 @@ class Ridge(LinearModel):
 
 
 class Lasso(LinearModel):
+    """
+    Linear regression with L1-regularization
+
+    """
 
     def __init__(self, alpha, *args, **kwargs):
         self._alpha = alpha
