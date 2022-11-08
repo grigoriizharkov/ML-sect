@@ -6,6 +6,18 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class Node:
+    """
+    Simple Node class.
+
+    Attributes:
+        x: pd.DataFrame
+        y: pd.Series
+
+    Methods:
+        display_tree()
+            Visualize tree in console
+
+    """
     def __init__(self, x: pd.DataFrame, y: pd.Series):
         self.x = x
         self.y = y
@@ -44,6 +56,27 @@ class Node:
 
 
 class DTClassifier:
+    """
+    Decision tree classifier algorithm with entropy splitting criteria
+
+    Attributes:
+        stopping: 'sample', 'purity' or 'number'
+            Stopping criteria
+
+        min_sample_leaf: int>0, default=5
+            Minimum number of samples in the lead
+
+        max_leaf_number: int>0, default=5
+            Maximum number of leafs in the tree
+
+    Methods:
+         fit(x: pd.DataFrame, y: pd.Series) -> Node
+            Fitting train data and building the tree
+
+        predict(x: pd.DataFrame) -> list, list
+            Predict class for new test data
+
+    """
     def __init__(self, stopping: str, min_sample_leaf=5, max_leaf_number=5):
         if stopping not in ['sample', 'purity', 'number']:
             raise ValueError('Incorrect stopping criteria, choose one of "sample", "purity" or "number"')

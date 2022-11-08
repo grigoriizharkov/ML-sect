@@ -3,12 +3,30 @@ import numpy as np
 
 
 class KNNClassifier:
+    """
+    K-nearest neigbors metric classification algorithm.
+
+    Attributes:
+        k: int>0
+            Number of neighbors
+
+    Methods:
+        fit(x: pd.DataFrame, y: pd.Series)
+            Fit training data (just load it in memory)
+
+        predict(x: pd.DataFrame) -> np.ndarray
+            Predict target variable fot test data
+    """
     def __init__(self, k: int):
         self._k = k
         self._x = None
         self._y = None
 
     def fit(self, x: pd.DataFrame, y: pd.Series):
+        """
+        Fit (memorize) training data
+
+        """
         self._x = x
         self._y = y
 
@@ -19,6 +37,10 @@ class KNNClassifier:
         return 0.75 * (1 - r**2)
 
     def predict(self, x: pd.DataFrame):
+        """
+        Make a prediction for test data
+
+        """
         prediction = list()
 
         for i in range(x.shape[0]):
